@@ -1,0 +1,18 @@
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.webp
+
+# Dataset folders
+dataset/
+dataset_lowerface/
+dataset_processed/
+raw_images/
+
+# Model files
+models/
+*.h5
