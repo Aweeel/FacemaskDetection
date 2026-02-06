@@ -23,8 +23,8 @@ train_datagen = ImageDataGenerator(
     zoom_range=0.15,
     shear_range=0.1,
 
-    brightness_range=(0.6, 1.4),   # BIG improvement for dark masks
-    channel_shift_range=40.0,      # removes color dependency
+    brightness_range=(0.6, 1.4),  
+    channel_shift_range=40.0,      
 
     horizontal_flip=True,
     fill_mode="nearest",
@@ -79,7 +79,7 @@ model.compile(
     metrics=["accuracy"]
 )
 
-# Train the model
+# Train model
 EPOCHS = 15
 
 history = model.fit(
@@ -88,6 +88,6 @@ history = model.fit(
     epochs=EPOCHS
 )
 
-# Save the model
+# Save model
 model.save(model_save_path)
 print(f"Model saved to {model_save_path}")

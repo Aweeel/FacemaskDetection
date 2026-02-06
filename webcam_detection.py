@@ -13,7 +13,6 @@ face_cascade = cv2.CascadeClassifier(
 
 cap = cv2.VideoCapture(0)
 
-# 🔹 Prediction smoothing buffer
 prediction_buffer = deque(maxlen=10)
 
 while True:
@@ -23,7 +22,6 @@ while True:
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # More stable face detection
     faces = face_cascade.detectMultiScale(
         gray,
         scaleFactor=1.1,
@@ -37,7 +35,7 @@ while True:
         face_img = cv2.resize(face_img, (224, 224))
         face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
 
-        # --- Lighting normalization (CLAHE) ---
+        # --- Lighting normalization ---
         lab = cv2.cvtColor(face_img, cv2.COLOR_RGB2LAB)
         l, a, b = cv2.split(lab)
 
@@ -47,7 +45,6 @@ while True:
         lab = cv2.merge((l, a, b))
         face_img = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
 
-        # Sharpen edges slightly (helps dark masks)
         kernel = np.array([[0, -1, 0],
                    [-1, 5, -1],
                    [0, -1, 0]])
