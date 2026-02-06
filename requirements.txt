@@ -1,0 +1,16 @@
+numpy
+pandas
+matplotlib
+pillow
+scipy
+h5py
+tensorflow==2.20
+keras
+opencv-python
+opencv-python-headless
+icrawler
+bing-image-downloader
+tqdm
+
+
+#pip install -r requirements.txt
