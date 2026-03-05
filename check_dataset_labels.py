@@ -10,10 +10,10 @@ datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
 # Create a generator to check classes
 generator = datagen.flow_from_directory(
     dataset_dir,
-    target_size=(224, 224),  # adjust to your model input size
+    target_size=(224, 224), 
     batch_size=16,
     class_mode="categorical",
-    subset="training",       # just checking training subset
+    subset="training",    
     shuffle=False
 )
 
