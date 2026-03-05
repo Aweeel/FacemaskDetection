@@ -14,5 +14,8 @@ dataset_processed/
 raw_images/
 
 # Model files
-models/
 *.h5
+models/face_obstruction_model.h5
+
+# Keep the active model tracked
+!models/face_obstruction_model2.h5

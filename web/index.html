@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Mask Detection System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <nav class="navbar">
+            <div class="logo">SECURITY MONITOR</div>
+            <div class="system-right">
+                <div>
+                    <span class="live-dot"></span>
+                    LIVE
+                </div>
+                <button id="themeToggle">Toggle Mode</button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+
+        <h1>Face Mask Detection System</h1>
+
+        <div class="view-controls">
+            <button id="singleViewBtn" class="view-btn active">Single Camera</button>
+            <button id="gridViewBtn" class="view-btn">4-Camera Grid</button>
+            <button id="fullscreenBtn" class="view-btn">&#x26F6; Fullscreen</button>
+        </div>
+
+        <!-- SINGLE CAMERA VIEW -->
+        <div id="singleView" class="single-view active">
+            <div class="video-wrapper" id="mainVideoWrapper">
+                <div id="camLabel" class="cam-label">CAM 01 | LIVE FEED</div>
+                <video id="mainVideo" autoplay playsinline></video>
+                <canvas id="overlayCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- 4-CAMERA GRID VIEW -->
+        <div id="gridView" class="camera-grid">
+            <div class="video-wrapper" data-cam="1">
+                <div class="cam-label">CAM 01 | LIVE FEED</div>
+                <video id="video1" autoplay playsinline></video>
+                <canvas id="overlayCanvas1"></canvas>
+            </div>
+            <div class="video-wrapper" data-cam="2">
+                <div class="cam-label">CAM 02 | LIVE FEED</div>
+                <video id="video2" autoplay playsinline></video>
+                <canvas id="overlayCanvas2"></canvas>
+            </div>
+            <div class="video-wrapper" data-cam="3">
+                <div class="cam-label">CAM 03 | LIVE FEED</div>
+                <video id="video3" autoplay playsinline></video>
+                <canvas id="overlayCanvas3"></canvas>
+            </div>
+            <div class="video-wrapper" data-cam="4">
+                <div class="cam-label">CAM 04 | LIVE FEED</div>
+                <video id="video4" autoplay playsinline></video>
+                <canvas id="overlayCanvas4"></canvas>
+            </div>
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="controls">
+            <select id="cameraSelect">
+                <option value="0">Cam 1</option>
+                <option value="1">Cam 2</option>
+                <option value="2">Cam 3</option>
+                <option value="3">Cam 4</option>
+            </select>
+            <button id="startBtn">Start</button>
+            <button id="stopBtn" class="secondary" disabled>Stop</button>
+            <button id="detectBtn" disabled>Detect</button>
+        </div>
+
+        <div class="result-card">
+            <div id="resultStatus" class="status">—</div>
+            <div id="resultConfidence" class="confidence">Result: —</div>
+        </div>
+
+        <div id="errorMessage" class="error" style="display:none;"></div>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
