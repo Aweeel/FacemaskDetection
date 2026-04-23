@@ -12,6 +12,7 @@ dataset/
 dataset_lowerface/
 dataset_processed/
 raw_images/
+docu.txt
 
 # Model files
 *.h5
@@ -19,3 +20,6 @@ models/face_obstruction_model.h5
 
 # Keep the active model tracked
 !models/face_obstruction_model2.h5
+
+# Local Python environments
+.venv/
