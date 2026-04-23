@@ -97,13 +97,25 @@ document.getElementById("startBtn").addEventListener("click", async () => {
         }
 
         for (let i = 0; i < Math.min(videoDevices.length, 4); i++) {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { deviceId: { exact: videoDevices[i].deviceId } }
-            });
-            videoStreams[i] = stream;
-            const vid = document.getElementById(`video${i + 1}`);
-            if (vid) vid.srcObject = stream;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: videoDevices[i].deviceId } }
+                });
+                videoStreams[i] = stream;
+                const vid = document.getElementById(`video${i + 1}`);
+                if (vid) vid.srcObject = stream;
+            } catch (camErr) {
+                console.warn(`Camera ${i + 1} failed to initialize:`, camErr.message);
+                // Continue with next camera instead of failing completely
+            }
         }
+        
+        // Check if at least one camera started successfully
+        const activeStreams = videoStreams.filter(s => s !== null);
+        if (activeStreams.length === 0) {
+            throw new Error("Could not start any camera. Check if cameras are in use, permissions are granted, or devices are connected.");
+        }
+        
         updateMainVideoStream();
 
         document.getElementById("startBtn").disabled  = true;
