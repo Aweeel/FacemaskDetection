@@ -3,6 +3,7 @@ import os
 import sys
 import threading
 import webbrowser
+import shutil
 import sqlite3
 from datetime import datetime
 
@@ -16,19 +17,33 @@ if hasattr(sys, "_MEIPASS"):
     BASE_DIR = sys._MEIPASS
 
 
+APP_DIR = os.path.dirname(os.path.abspath(sys.executable)) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
+
+
 def resource_path(*parts):
     return os.path.join(BASE_DIR, *parts)
 
 
 WEB_DIR = resource_path("web")
 MODEL_PATH = resource_path("models", "face_obstruction_model2.h5")
-DB_PATH = resource_path("detections.db")
+BUILTIN_DB_PATH = resource_path("detections.db")
+DB_PATH = os.path.join(APP_DIR, "detections.db")
+
+
+def ensure_db_file():
+    """Copy the bundled database next to the executable on first launch."""
+    if os.path.exists(DB_PATH):
+        return
+
+    if os.path.exists(BUILTIN_DB_PATH):
+        shutil.copy2(BUILTIN_DB_PATH, DB_PATH)
 
 app = Flask(__name__, static_folder=WEB_DIR)
 
 # ── Database Setup ────────────────────────────────────────────
 def init_db():
     """Create detections table if it doesn't exist."""
+    ensure_db_file()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""

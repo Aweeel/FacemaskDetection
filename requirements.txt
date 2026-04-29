@@ -17,6 +17,10 @@ backports.tarfile==1.2.0  # runtime dependency for setuptools/pkg_resources unde
 #  HOW TO RUN
 # ─────────────────────────────────────────────
 #
+# Run build_exe.bat to create an executable (FaceMaskDetection.exe) 
+#
+# ───────────────────────────────────────────── (app.py)
+#
 #  1. Install Python 3.11 from https://www.python.org/downloads/
 #     (during install tick "Add Python to PATH")
 #
