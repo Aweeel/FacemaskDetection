@@ -28,13 +28,13 @@
         <div class="view-controls">
             <button id="singleViewBtn" class="view-btn active">Single Camera</button>
             <button id="gridViewBtn" class="view-btn">4-Camera Grid</button>
-            <button id="fullscreenBtn" class="view-btn">&#x26F6; Fullscreen</button>
         </div>
 
         <!-- SINGLE CAMERA VIEW -->
         <div id="singleView" class="single-view active">
             <div class="video-wrapper" id="mainVideoWrapper">
                 <div id="camLabel" class="cam-label">CAM 01 | LIVE FEED</div>
+                <div class="no-camera" id="noCamMain">No camera detected</div>
                 <video id="mainVideo" autoplay playsinline></video>
                 <canvas id="overlayCanvas"></canvas>
             </div>
@@ -44,21 +44,25 @@
         <div id="gridView" class="camera-grid">
             <div class="video-wrapper" data-cam="1">
                 <div class="cam-label">CAM 01 | LIVE FEED</div>
+                <div class="no-camera" id="noCam1">No camera detected</div>
                 <video id="video1" autoplay playsinline></video>
                 <canvas id="overlayCanvas1"></canvas>
             </div>
             <div class="video-wrapper" data-cam="2">
                 <div class="cam-label">CAM 02 | LIVE FEED</div>
+                <div class="no-camera" id="noCam2">No camera detected</div>
                 <video id="video2" autoplay playsinline></video>
                 <canvas id="overlayCanvas2"></canvas>
             </div>
             <div class="video-wrapper" data-cam="3">
                 <div class="cam-label">CAM 03 | LIVE FEED</div>
+                <div class="no-camera" id="noCam3">No camera detected</div>
                 <video id="video3" autoplay playsinline></video>
                 <canvas id="overlayCanvas3"></canvas>
             </div>
             <div class="video-wrapper" data-cam="4">
                 <div class="cam-label">CAM 04 | LIVE FEED</div>
+                <div class="no-camera" id="noCam4">No camera detected</div>
                 <video id="video4" autoplay playsinline></video>
                 <canvas id="overlayCanvas4"></canvas>
             </div>
@@ -78,8 +82,13 @@
         </div>
 
         <div class="result-card">
-            <div id="resultStatus" class="status">—</div>
-            <div id="resultConfidence" class="confidence">Result: —</div>
+            <h3>Detection Log</h3>
+            <div class="log-controls">
+                <button id="clearLogsBtn">Clear Logs</button>
+            </div>
+            <div class="log-panel" id="logPanel">
+                <p class="log-empty">No detections yet</p>
+            </div>
         </div>
 
         <div id="errorMessage" class="error" style="display:none;"></div>
@@ -87,5 +96,40 @@
     </main>
 
     <script src="script.js"></script>
+    <script>
+        // Synchronous initialization: mark all camera slots as empty by default
+        // This runs immediately after script.js loads and before any event handlers
+        (function initEmptyState() {
+            console.log("[inline-init] Setting empty-state on all wrappers");
+            
+            // Initialize grid wrappers
+            for (let i = 1; i <= 4; i++) {
+                const wrapper = document.querySelector(`#gridView .video-wrapper[data-cam="${i}"]`);
+                if (wrapper) {
+                    wrapper.classList.add("empty-state");
+                    console.log(`[inline-init] Added empty-state to grid cam ${i}`);
+                }
+            }
+            
+            // Initialize main wrapper
+            const mainWrapper = document.getElementById("mainVideoWrapper");
+            if (mainWrapper) {
+                mainWrapper.classList.add("empty-state");
+                console.log("[inline-init] Added empty-state to main wrapper");
+            }
+        })();
+    </script>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <span>Face Mask Detection System</span>
+            </div>
+            <div class="footer-center">
+                <span>&copy; 2026 | Real-time Detection</span>
+            </div>
+            <div class="footer-right"></div>
+        </div>
+    </footer>
 </body>
 </html>

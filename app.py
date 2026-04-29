@@ -1,14 +1,69 @@
-import os
 import base64
+import os
+import sys
+import threading
+import webbrowser
+import sqlite3
+from datetime import datetime
+
 import numpy as np
 import cv2
 import tensorflow as tf
 from flask import Flask, request, jsonify, send_from_directory
 
-app = Flask(__name__, static_folder="web")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if hasattr(sys, "_MEIPASS"):
+    BASE_DIR = sys._MEIPASS
+
+
+def resource_path(*parts):
+    return os.path.join(BASE_DIR, *parts)
+
+
+WEB_DIR = resource_path("web")
+MODEL_PATH = resource_path("models", "face_obstruction_model2.h5")
+DB_PATH = resource_path("detections.db")
+
+app = Flask(__name__, static_folder=WEB_DIR)
+
+# ── Database Setup ────────────────────────────────────────────
+def init_db():
+    """Create detections table if it doesn't exist."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS detections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            camera INTEGER NOT NULL,
+            face_index INTEGER NOT NULL,
+            label TEXT NOT NULL,
+            confidence REAL NOT NULL,
+            x INTEGER,
+            y INTEGER,
+            w INTEGER,
+            h INTEGER
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def log_detection(camera, face_index, label, confidence, x, y, w, h):
+    """Log a single face detection to the database."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+        INSERT INTO detections (timestamp, camera, face_index, label, confidence, x, y, w, h)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (timestamp, camera, face_index, label, confidence, x, y, w, h))
+    conn.commit()
+    conn.close()
+
+# Initialize database
+init_db()
 
 # Load model once at startup
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "face_obstruction_model2.h5")
 model = tf.keras.models.load_model(MODEL_PATH)
 class_labels = ["with_mask", "without_mask"]
 
@@ -63,12 +118,12 @@ def detect_faces(gray, frame_width):
 
 @app.route("/")
 def index():
-    return send_from_directory("web", "index.html")
+    return send_from_directory(WEB_DIR, "index.html")
 
 
 @app.route("/<path:filename>")
 def static_files(filename):
-    return send_from_directory("web", filename)
+    return send_from_directory(WEB_DIR, filename)
 
 
 @app.route("/predict", methods=["POST"])
@@ -76,6 +131,8 @@ def predict():
     data = request.get_json(force=True)
     if not data or "image" not in data:
         return jsonify({"error": "No image provided"}), 400
+
+    camera = data.get("camera", 0)  # camera index (0-3)
 
     # Decode base64 image from browser canvas
     try:
@@ -92,7 +149,7 @@ def predict():
         return jsonify({"status": "no_face", "results": []})
 
     results = []
-    for (x, y, w, h) in faces[:1]:  # process only the primary face
+    for face_idx, (x, y, w, h) in enumerate(faces[:3]):  # process up to 3 faces
         face_input = preprocess_face(frame, x, y, w, h)
         if face_input is None:
             continue
@@ -101,6 +158,9 @@ def predict():
         class_idx  = int(np.argmax(pred))
         confidence = round(float(pred[class_idx]) * 100, 1)
         label      = class_labels[class_idx]
+
+        # Log to database
+        log_detection(camera, face_idx, label, confidence, int(x), int(y), int(w), int(h))
 
         results.append({
             "label":      label,
@@ -111,6 +171,41 @@ def predict():
     return jsonify({"status": "ok", "results": results})
 
 
+@app.route("/logs", methods=["GET"])
+def get_logs():
+    """Retrieve recent detections from database."""
+    limit = request.args.get("limit", 100, type=int)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM detections ORDER BY id DESC LIMIT ?", (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    logs = [dict(row) for row in rows]
+    return jsonify({"logs": logs})
+
+
+@app.route("/logs/clear", methods=["POST"])
+def clear_logs():
+    """Clear all logs from database."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM detections")
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "cleared"})
+
+
+def open_browser(url):
+    webbrowser.open_new(url)
+
+
+def main():
+    url = "http://127.0.0.1:5000"
+    threading.Timer(1.0, open_browser, args=(url,)).start()
+    print(f"Starting Face Mask Detection server at {url}")
+    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+
+
 if __name__ == "__main__":
-    print("Starting Face Mask Detection server at http://localhost:5000")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    main()
