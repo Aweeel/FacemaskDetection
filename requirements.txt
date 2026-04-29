@@ -10,6 +10,8 @@ opencv-python==4.13.0.90  # face detection and image processing
 flask==3.1.3            # web server for the browser UI
 h5py==3.15.1            # loading/saving .h5 model files
 pillow==12.1.0          # image utilities (used in preprocess_images.py)
+pyinstaller==6.13.0     # build the Windows .exe
+backports.tarfile==1.2.0  # runtime dependency for setuptools/pkg_resources under PyInstaller
 
 # ─────────────────────────────────────────────
 #  HOW TO RUN

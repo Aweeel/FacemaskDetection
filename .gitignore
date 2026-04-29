@@ -23,3 +23,6 @@ models/face_obstruction_model.h5
 
 # Local Python environments
 .venv/
+build/
+dist/
+*.spec

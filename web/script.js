@@ -34,46 +34,42 @@ gridViewBtn.addEventListener("click", () => {
     gridView.classList.add("active");
     singleViewBtn.classList.remove("active");
     gridViewBtn.classList.add("active");
+    updatePlaceholders();
 });
 
 cameraSelect.addEventListener("change", (e) => {
     activeCameraIndex = parseInt(e.target.value);
-    camLabel.textContent = `CAM ${String(activeCameraIndex + 1).padStart(2, '0')} | LIVE FEED`;
-    if (currentMode === 'single') updateMainVideoStream();
+    console.log("[cameraSelect] Changed to index", activeCameraIndex, "hasStream=", !!videoStreams[activeCameraIndex]);
+    updateSingleViewLabel();
+    if (currentMode === 'single') {
+        console.log("[cameraSelect] In single mode, calling updateMainVideoStream");
+        updateMainVideoStream();
+        updatePlaceholders();
+    }
 });
 
 function updateSingleViewLabel() {
-    camLabel.textContent = `CAM ${String(activeCameraIndex + 1).padStart(2, '0')} | LIVE FEED`;
+    const hasSelectedStream = !!videoStreams[activeCameraIndex];
+    camLabel.textContent = `CAM ${String(activeCameraIndex + 1).padStart(2, '0')} | ${hasSelectedStream ? 'LIVE FEED' : 'NO CAMERA DETECTED'}`;
 }
 
 function updateMainVideoStream() {
     const mainVideo = document.getElementById("mainVideo");
-    // Use the active camera stream, fall back to first available
-    const stream = videoStreams[activeCameraIndex] || videoStreams.find(s => s !== null);
-    if (stream) mainVideo.srcObject = stream;
+    const stream = videoStreams[activeCameraIndex] || null;
+    console.log("[updateMainVideoStream] Setting mainVideo.srcObject to stream at index", activeCameraIndex, "stream=", !!stream);
+    mainVideo.srcObject = stream;
+    updateSingleViewLabel();
+    updatePlaceholders();
 }
 
-// ── Fullscreen ────────────────────────────────────────────────
-const fullscreenBtn = document.getElementById("fullscreenBtn");
-fullscreenBtn.addEventListener("click", () => {
-    const element = currentMode === 'single'
-        ? document.getElementById("mainVideoWrapper")
-        : document.getElementById("gridView");
-    if (!document.fullscreenElement) {
-        element.requestFullscreen().catch(err => console.error("Fullscreen error:", err));
-        fullscreenBtn.textContent = "⛶ Exit Fullscreen";
-    } else {
-        document.exitFullscreen();
-        fullscreenBtn.textContent = "⛶ Fullscreen";
-    }
-});
-document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement) fullscreenBtn.textContent = "⛶ Fullscreen";
-});
-
-// Click grid camera → switch to single view
+// Click grid camera → switch to single view (only if camera exists)
 document.querySelectorAll("#gridView .video-wrapper").forEach((wrapper, index) => {
     wrapper.addEventListener("click", () => {
+        // Only switch to single view if this camera slot has a stream
+        if (!videoStreams[index]) {
+            console.log(`[gridClick] Cam ${index + 1} is empty, not switching`);
+            return; // Don't switch to single view for empty cameras
+        }
         cameraSelect.value = index;
         activeCameraIndex = index;
         updateSingleViewLabel();
@@ -123,6 +119,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
         document.getElementById("detectBtn").disabled = false;
 
         showError(null);
+        updatePlaceholders();
     } catch (err) {
         showError("Error accessing cameras: " + (err.message || err.name || "Permission denied. Allow camera access in your browser."));
     }
@@ -139,7 +136,7 @@ document.getElementById("stopBtn").addEventListener("click", () => {
     document.getElementById("stopBtn").disabled   = true;
     document.getElementById("detectBtn").disabled = true;
 
-    setResult(null);
+    updatePlaceholders();
 });
 
 // ── Detection loop ────────────────────────────────────────────
@@ -156,7 +153,6 @@ detectBtn.addEventListener("click", () => {
     } else {
         stopDetection();
         clearCanvas();
-        setResult(null);
     }
 });
 
@@ -191,6 +187,26 @@ async function detectFrame() {
     }
 }
 
+// Update placeholders visibility for empty camera slots
+function updatePlaceholders() {
+    console.log("[updatePlaceholders] called");
+    // main view placeholder
+    const mainVideo = document.getElementById("mainVideo");
+    const mainWrapper = document.getElementById("mainVideoWrapper");
+    const mainHasStream = !!(mainVideo && mainVideo.srcObject);
+    console.log("[updatePlaceholders] main: hasStream=", mainHasStream);
+    if (mainWrapper) mainWrapper.classList.toggle("empty-state", !mainHasStream);
+
+    // grid placeholders
+    for (let i = 0; i < 4; i++) {
+        const wrapper = document.querySelector(`#gridView .video-wrapper[data-cam="${i + 1}"]`);
+        const vid  = document.getElementById(`video${i + 1}`);
+        const hasStream = !!(videoStreams[i] && vid && vid.srcObject);
+        console.log(`[updatePlaceholders] grid[${i}]: stream=${!!videoStreams[i]}, vid.srcObject=${!!(vid && vid.srcObject)}, hasStream=${hasStream}`);
+        if (wrapper) wrapper.classList.toggle("empty-state", !hasStream);
+    }
+}
+
 async function detectOnVideo(video, canvas) {
     if (!video || !video.srcObject || video.readyState < 2) return;
 
@@ -202,20 +218,30 @@ async function detectOnVideo(video, canvas) {
     const imageBase64 = captureCanvas.toDataURL("image/jpeg", 0.8);
 
     try {
+        // Determine which camera this is (by matching the video element)
+        let cameraIndex = 0;
+        if (currentMode === 'grid') {
+            for (let i = 0; i < 4; i++) {
+                if (document.getElementById(`video${i + 1}`) === video) {
+                    cameraIndex = i;
+                    break;
+                }
+            }
+        } else {
+            cameraIndex = activeCameraIndex;
+        }
+
         const res  = await fetch("/predict", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ image: imageBase64 })
+            body:    JSON.stringify({ image: imageBase64, camera: cameraIndex })
         });
         const data = await res.json();
         drawOverlay(data, video, canvas);
-        // Only update result card from the active/primary camera
-        if (canvas.id === "overlayCanvas" || canvas.id === `overlayCanvas${activeCameraIndex + 1}`) {
-            if (data.status === "no_face") {
-                setResult({ label: "No face detected", confidence: null });
-            } else if (data.results && data.results.length > 0) {
-                setResult(data.results[0]);
-            }
+        
+        // Refresh logs after detection
+        if (data.results && data.results.length > 0) {
+            refreshLogs();
         }
     } catch (err) {
         showError("Backend unreachable. Is app.py running?");
@@ -252,29 +278,6 @@ function drawOverlay(data, video, overlay) {
     });
 }
 
-function setResult(r) {
-    const statusEl     = document.getElementById("resultStatus");
-    const confidenceEl = document.getElementById("resultConfidence");
-
-    if (!r) {
-        statusEl.textContent     = "—";
-        statusEl.className       = "status";
-        confidenceEl.textContent = "Result: —";
-        return;
-    }
-
-    if (r.label === "No face detected") {
-        statusEl.textContent     = "No Face";
-        statusEl.className       = "status";
-        confidenceEl.textContent = "Point camera at a face";
-        return;
-    }
-
-    statusEl.textContent = r.label === "with_mask" ? "✔ MASK ON" : "✘ NO MASK";
-    statusEl.className   = r.label === "with_mask" ? "status mask" : "status no-mask";
-    confidenceEl.textContent = `Confidence: ${r.confidence}%`;
-}
-
 function clearCanvas() {
     ["overlayCanvas", "overlayCanvas1", "overlayCanvas2", "overlayCanvas3", "overlayCanvas4"].forEach(id => {
         const overlay = document.getElementById(id);
@@ -290,3 +293,57 @@ function showError(msg) {
     el.textContent  = msg;
     el.style.display = "block";
 }
+
+// ── Logging Panel ──────────────────────────────────────
+async function refreshLogs() {
+    try {
+        const res = await fetch("/logs");
+        const data = await res.json();
+        displayLogs(data.logs);
+    } catch (err) {
+        console.error("Failed to fetch logs:", err);
+    }
+}
+
+function displayLogs(logs) {
+    const panel = document.getElementById("logPanel");
+    
+    if (!logs || logs.length === 0) {
+        panel.innerHTML = '<p class="log-empty">No detections yet</p>';
+        return;
+    }
+
+    let html = "";
+    logs.forEach(log => {
+        const timestamp = log.timestamp;
+        const cameraNum = log.camera + 1;
+        const maskClass = log.label === "with_mask" ? "with-mask" : "no-mask";
+        const maskText = log.label === "with_mask" ? "✓ MASK" : "✗ NO MASK";
+        
+        html += `
+            <div class="log-entry ${maskClass}">
+                <div class="log-time">${timestamp} | CAM ${cameraNum}</div>
+                <div class="log-text">${maskText} (${log.confidence}%)</div>
+            </div>
+        `;
+    });
+    
+    panel.innerHTML = html;
+}
+
+// Clear logs button
+document.getElementById("clearLogsBtn").addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to clear all logs?")) return;
+    try {
+        await fetch("/logs/clear", { method: "POST" });
+        displayLogs([]);
+        console.log("Logs cleared");
+    } catch (err) {
+        showError("Failed to clear logs");
+    }
+});
+
+// Load logs on page load
+window.addEventListener("load", () => {
+    refreshLogs();
+});
