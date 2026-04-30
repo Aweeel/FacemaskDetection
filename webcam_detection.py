@@ -4,6 +4,8 @@ import cv2
 import tensorflow as tf
 import numpy as np
 from collections import deque
+import time
+from datetime import datetime
 
 model = tf.keras.models.load_model("models/face_obstruction_model2.h5")
 
@@ -25,6 +27,10 @@ box_buffer = deque(maxlen=6)  # smooth bounding box over last 6 frames
 smoothed_confidence = 0.0  # exponentially smoothed display value
 smoothed_label = None
 SMOOTH_ALPHA = 0.1  # lower = slower/smoother, higher = more responsive
+
+# Logging variables
+last_log_time = time.time()
+log_interval = 1.0  # Log every 1 second
 
 while True:
     ret, frame = cap.read()
@@ -125,6 +131,18 @@ while True:
             color,
             2
         )
+
+    # Log detection status every 1 second
+    current_time = time.time()
+    if current_time - last_log_time >= log_interval:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        face_count = len(faces)
+        if face_count > 0:
+            log_message = f"[{timestamp}] Faces detected: {face_count}, Label: {smoothed_label}, Confidence: {smoothed_confidence*100:.1f}%"
+        else:
+            log_message = f"[{timestamp}] No faces detected"
+        print(log_message)
+        last_log_time = current_time
 
     cv2.imshow("Face Obstruction Detection", frame)
 

@@ -42,12 +42,20 @@ app = Flask(__name__, static_folder=WEB_DIR)
 
 # ── Database Setup ────────────────────────────────────────────
 def init_db():
-    """Create detections table if it doesn't exist."""
+    """Create logs table if it doesn't exist."""
     ensure_db_file()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='detections'")
+    legacy_table_exists = cursor.fetchone() is not None
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='logs'")
+    logs_table_exists = cursor.fetchone() is not None
+
+    if legacy_table_exists and not logs_table_exists:
+        cursor.execute("ALTER TABLE detections RENAME TO logs")
+
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS detections (
+        CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT NOT NULL,
             camera INTEGER NOT NULL,
@@ -69,7 +77,7 @@ def log_detection(camera, face_index, label, confidence, x, y, w, h):
     cursor = conn.cursor()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
-        INSERT INTO detections (timestamp, camera, face_index, label, confidence, x, y, w, h)
+        INSERT INTO logs (timestamp, camera, face_index, label, confidence, x, y, w, h)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (timestamp, camera, face_index, label, confidence, x, y, w, h))
     conn.commit()
@@ -193,7 +201,7 @@ def get_logs():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM detections ORDER BY id DESC LIMIT ?", (limit,))
+    cursor.execute("SELECT * FROM logs ORDER BY id DESC LIMIT ?", (limit,))
     rows = cursor.fetchall()
     conn.close()
     logs = [dict(row) for row in rows]
@@ -205,7 +213,7 @@ def clear_logs():
     """Clear all logs from database."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM detections")
+    cursor.execute("DELETE FROM logs")
     conn.commit()
     conn.close()
     return jsonify({"status": "cleared"})
